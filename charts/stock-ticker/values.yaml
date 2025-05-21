@@ -1,0 +1,114 @@
+# Default values for stock-ticker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/thoreinstein/stock-ticker
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# No image pull secrets needed for public repositories
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+# Security contexts
+podSecurityContext:
+  fsGroup: 65534
+  runAsNonRoot: true
+  runAsUser: 65534
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: stock-ticker.thoreinstein.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: stock-ticker-tls
+      hosts:
+        - stock-ticker.thoreinstein.com
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# Stock Ticker specific configuration
+# API key is passed separately via --set apiKey=your_api_key
+env:
+  - name: SYMBOL
+    value: "AAPL"
+  - name: NDAYS
+    value: "10"
+  - name: APIKEY
+    valueFrom:
+      secretKeyRef:
+        name: stock-ticker-secrets
+        key: apikey
+
+# The port exposed by the container
+containerPort: 8080
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

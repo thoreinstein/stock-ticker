@@ -1,0 +1,171 @@
+---
+# Source: stock-ticker/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stock-ticker
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: stock-ticker/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stock-ticker-secrets
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+stringData:
+  apikey: "PLACEHOLDER_API_KEY"
+---
+# Source: stock-ticker/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: stock-ticker
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+---
+# Source: stock-ticker/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-ticker
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stock-ticker
+      app.kubernetes.io/instance: stock-ticker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stock-ticker
+        app.kubernetes.io/instance: stock-ticker
+    spec:
+      serviceAccountName: stock-ticker
+      securityContext:
+        {}
+      containers:
+        - name: stock-ticker
+          securityContext:
+            {}
+          image: "ghcr.io/thoreinstein/stock-ticker:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SYMBOL
+              value: AAPL
+            - name: NDAYS
+              value: "10"
+            - name: APIKEY
+              valueFrom:
+                secretKeyRef:
+                  key: apikey
+                  name: stock-ticker-secrets
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: stock-ticker/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: stock-ticker
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stock-ticker
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+# Source: stock-ticker/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stock-ticker
+  labels:
+    helm.sh/chart: stock-ticker-0.1.0
+    app.kubernetes.io/name: stock-ticker
+    app.kubernetes.io/instance: stock-ticker
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "stock-ticker.thoreinstein.com"
+      secretName: stock-ticker-tls
+  rules:
+    - host: "stock-ticker.thoreinstein.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-ticker
+                port:
+                  number: 80

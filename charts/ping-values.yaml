@@ -1,0 +1,12 @@
+image:
+  repository: ghcr.io/thoreinstein/stock-ticker
+  tag: "latest"
+
+# No image pull secrets needed for public images
+imagePullSecrets: []
+
+# Skip creating the secret since we already have one
+existingSecrets:
+  enabled: true
+  apiKeySecret: stock-ticker-secrets
+  apiKeyKey: apikey

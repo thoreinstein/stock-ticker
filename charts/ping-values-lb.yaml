@@ -1,0 +1,7 @@
+# LoadBalancer configuration for the Stock Ticker service
+service:
+  type: LoadBalancer
+
+# Disable ingress since we're using LoadBalancer
+ingress:
+  enabled: false

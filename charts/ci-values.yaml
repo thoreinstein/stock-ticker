@@ -1,0 +1,45 @@
+# CI testing values - uses nginx mock image
+image:
+  repository: nginx
+  tag: "alpine"
+
+# No need for imagePullSecrets for public images
+imagePullSecrets: []
+
+# Use mock API key for CI
+apiKey: "ci-testing-api-key"
+
+# Set service to ClusterIP for testing
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+# Disable ingress for CI testing
+ingress:
+  enabled: false
+
+# Add containerPort to match image
+containerPort: 80
+
+# Use minimal resources for CI
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Disable HPA for CI testing
+autoscaling:
+  enabled: false
+
+# Override the environment variables
+env:
+  - name: SYMBOL
+    value: "AAPL"
+  - name: NDAYS
+    value: "7"
+  - name: APIKEY
+    value: "ci-testing-api-key"
