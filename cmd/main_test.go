@@ -95,14 +95,14 @@ func TestLoadConfig(t *testing.T) {
 
 			// Restore original environment variables after test
 			defer func() {
-				os.Setenv("SYMBOL", origSymbol)
-				os.Setenv("NDAYS", origNDays)
-				os.Setenv("APIKEY", origAPIKey)
+				_ = os.Setenv("SYMBOL", origSymbol)
+				_ = os.Setenv("NDAYS", origNDays)
+				_ = os.Setenv("APIKEY", origAPIKey)
 			}()
 
 			// Set test environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 
 			config, err := loadConfig()
@@ -554,14 +554,13 @@ func TestResponseEncoding(t *testing.T) {
 
 	// Encode to JSON
 	var buf strings.Builder
-	err := json.NewEncoder(&buf).Encode(resp)
-	if err != nil {
+	if err := json.NewEncoder(&buf).Encode(resp); err != nil {
 		t.Fatalf("Failed to encode response: %v", err)
 	}
 
 	// Check JSON structure
 	jsonStr := buf.String()
-	
+
 	expectedFields := []string{
 		`"symbol":"AAPL"`,
 		`"days":5`,
@@ -591,22 +590,22 @@ func TestResponseEncoding(t *testing.T) {
 	if decoded.Symbol != resp.Symbol {
 		t.Errorf("Expected Symbol %s, got %s", resp.Symbol, decoded.Symbol)
 	}
-	
+
 	if decoded.Days != resp.Days {
 		t.Errorf("Expected Days %d, got %d", resp.Days, decoded.Days)
 	}
-	
+
 	if decoded.AverageClose != resp.AverageClose {
 		t.Errorf("Expected AverageClose %f, got %f", resp.AverageClose, decoded.AverageClose)
 	}
-	
+
 	if len(decoded.Data) != len(resp.Data) {
 		t.Errorf("Expected %d data points, got %d", len(resp.Data), len(decoded.Data))
 	} else if len(decoded.Data) > 0 {
 		if decoded.Data[0].Date != resp.Data[0].Date {
 			t.Errorf("Expected Date %s, got %s", resp.Data[0].Date, decoded.Data[0].Date)
 		}
-		
+
 		if decoded.Data[0].ClosePrice != resp.Data[0].ClosePrice {
 			t.Errorf("Expected ClosePrice %f, got %f", resp.Data[0].ClosePrice, decoded.Data[0].ClosePrice)
 		}

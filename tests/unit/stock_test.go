@@ -31,7 +31,10 @@ func TestAlphaVantageResponseParsing(t *testing.T) {
 				},
 			},
 		}
-		json.NewEncoder(w).Encode(mockResponse)
+		if err := json.NewEncoder(w).Encode(mockResponse); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			t.Fatal("Failed to encode response:", err)
+		}
 	}))
 	defer server.Close()
 
@@ -40,7 +43,11 @@ func TestAlphaVantageResponseParsing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("Failed to close response body: %v", err)
+		}
+	}()
 
 	// Decode response
 	var avResp MockAlphaVantageResponse
@@ -107,12 +114,12 @@ func TestAverageCalculation(t *testing.T) {
 			for _, v := range tc.values {
 				total += v
 			}
-			
+
 			var avg float64
 			if len(tc.values) > 0 {
 				avg = total / float64(len(tc.values))
 			}
-			
+
 			if avg != tc.expected {
 				t.Errorf("Expected average %f, got %f", tc.expected, avg)
 			}
@@ -123,7 +130,9 @@ func TestAverageCalculation(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	// Test server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("invalid json"))
+		if _, err := w.Write([]byte("invalid json")); err != nil {
+			t.Fatal("Failed to write response:", err)
+		}
 	}))
 	defer server.Close()
 
@@ -131,7 +140,11 @@ func TestErrorHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("Failed to close response body: %v", err)
+		}
+	}()
 
 	var avResp MockAlphaVantageResponse
 	err = json.NewDecoder(resp.Body).Decode(&avResp)
@@ -150,7 +163,10 @@ func TestEmptyTimeSeries(t *testing.T) {
 			},
 			TimeSeries: nil,
 		}
-		json.NewEncoder(w).Encode(mockResponse)
+		if err := json.NewEncoder(w).Encode(mockResponse); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			t.Fatal("Failed to encode response:", err)
+		}
 	}))
 	defer server.Close()
 
@@ -158,7 +174,11 @@ func TestEmptyTimeSeries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("Failed to close response body: %v", err)
+		}
+	}()
 
 	var avResp MockAlphaVantageResponse
 	if err := json.NewDecoder(resp.Body).Decode(&avResp); err != nil {

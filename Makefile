@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-coverage test-all test-benchmark lint build run docker-build docker-run docker-logs docker-push helm-test helm-lint k8s-test
+.PHONY: test test-unit test-integration test-coverage test-all test-benchmark lint golangci-lint lint-errcheck build run docker-build docker-run docker-logs docker-push helm-lint helm-template helm-package helm-test k8s-test install-tools
 
 # Default target
 all: test build
@@ -38,6 +38,13 @@ docker-build:
 	@echo "Building Docker image..."
 	@docker build -t ping-sre .
 
+# Build multi-platform Docker image (AMD64 and ARM64)
+docker-build-multiplatform:
+	@echo "Building multi-platform Docker image..."
+	@docker buildx create --use --name multiplatform-builder >/dev/null 2>&1 || true
+	@docker buildx build --platform linux/amd64,linux/arm64 -t ping-sre:multiplatform -f Dockerfile.multiplatform . --load
+	@echo "Multi-platform images built for Linux AMD64 and ARM64"
+
 # Run Docker container
 docker-run:
 	@echo "Running Docker container..."
@@ -50,7 +57,7 @@ docker-run:
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf bin/ coverage.out coverage.html
+	@rm -rf bin/ coverage.out coverage.html *.tgz
 
 # Development workflow - test then run
 dev: test run
@@ -60,22 +67,55 @@ lint:
 	@echo "Running linters..."
 	@go vet ./...
 	@go fmt ./...
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run --timeout=5m; \
+	elif [ -f $$HOME/go/bin/golangci-lint ]; then \
+		$$HOME/go/bin/golangci-lint run --timeout=5m; \
+	else \
+		echo "golangci-lint not found, skipping"; \
+	fi
+
+# Test cross-platform compatibility
+cross-platform-test:
+	@echo "Testing cross-platform compatibility (Linux AMD64)..."
+	@docker build -t stock-ticker-test-amd64 -f Dockerfile.test . --platform linux/amd64
+	@docker run --platform linux/amd64 stock-ticker-test-amd64
+	@echo "Success! Code works on Linux AMD64 architecture."
+
+# Run golangci-lint directly
+golangci-lint:
+	@echo "Running golangci-lint..."
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run --timeout=5m; \
+	elif [ -f $$HOME/go/bin/golangci-lint ]; then \
+		$$HOME/go/bin/golangci-lint run --timeout=5m; \
+	else \
+		echo "golangci-lint not found, skipping"; \
+	fi
 
 # Run benchmarks
 test-benchmark:
 	@echo "Running benchmarks..."
 	@go test -bench=. ./...
 
-# Test Helm chart with dry-run
-helm-test:
-	@echo "Testing Helm chart..."
-	@helm lint ./helm/stock-ticker
-	@helm template --debug stock-ticker ./helm/stock-ticker
-
 # Lint Helm chart
 helm-lint:
 	@echo "Linting Helm chart..."
-	@helm lint ./helm/stock-ticker
+	@helm lint ./charts/stock-ticker
+
+# Template Helm chart
+helm-template:
+	@echo "Templating Helm chart..."
+	@helm template stock-ticker ./charts/stock-ticker --set apiKey=dummy-api-key --debug
+
+# Package Helm chart
+helm-package:
+	@echo "Packaging Helm chart..."
+	@helm package ./charts/stock-ticker
+
+# Test Helm chart with all checks
+helm-test: helm-lint helm-template helm-package
+	@echo "Helm chart validation complete"
 
 # Test Kubernetes manifests with dry-run
 k8s-test:
@@ -83,7 +123,7 @@ k8s-test:
 	@kubectl apply --dry-run=client -f manifests/stock-ticker-rendered.yaml
 
 # CI/CD pipeline simulation
-ci: test build docker-build
+ci: lint test build docker-build cross-platform-test
 	@echo "CI pipeline complete!"
 
 # Check Docker container logs
@@ -96,3 +136,21 @@ docker-push:
 	@docker tag ping-sre ghcr.io/$(shell git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/stock-ticker:latest
 	@docker push ghcr.io/$(shell git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/stock-ticker:latest
 	@echo "Image pushed successfully"
+
+# Install development tools
+install-tools:
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/kisielk/errcheck@latest
+
+# Run errcheck specifically
+lint-errcheck:
+	@echo "Running errcheck..."
+	@if command -v errcheck >/dev/null 2>&1; then \
+		errcheck ./...; \
+	elif [ -f $$HOME/go/bin/errcheck ]; then \
+		$$HOME/go/bin/errcheck ./...; \
+	else \
+		echo "errcheck not found, installing..."; \
+		go install github.com/kisielk/errcheck@latest; \
+		$$HOME/go/bin/errcheck ./...; \
+	fi

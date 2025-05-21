@@ -142,7 +142,10 @@ func TestFetchStockData_ParsesAlphaVantageResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test server that returns our mock response
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				json.NewEncoder(w).Encode(tt.mockResponse)
+				if err := json.NewEncoder(w).Encode(tt.mockResponse); err != nil {
+					http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+					t.Fatalf("Failed to encode response: %v", err)
+				}
 			}))
 			defer ts.Close()
 
@@ -244,7 +247,7 @@ func TestCalculateAverage(t *testing.T) {
 			for _, price := range tt.prices {
 				total += price
 			}
-			
+
 			var avg float64
 			if len(tt.prices) > 0 {
 				avg = total / float64(len(tt.prices))

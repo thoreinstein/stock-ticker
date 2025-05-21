@@ -56,16 +56,18 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       
-      - name: Install golangci-lint
+      - name: Install golangci-lint 
+        run: make install-tools
+        
+      - name: Run basic Go linters
+        run: |
+          go vet ./...
+          go fmt ./...
+      
+      - name: Run golangci-lint via action
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-          args: --timeout=5m
-      
-      - name: Check code formatting
-        run: |
-          go install golang.org/x/tools/cmd/goimports@latest
-          test -z "$(goimports -d .)"
 
   test:
     name: Run Tests

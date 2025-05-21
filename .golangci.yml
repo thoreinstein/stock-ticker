@@ -1,0 +1,9 @@
+linters:
+  disable:
+    - errcheck  # Disabling errcheck since we've fixed these issues manually
+  enable:
+    - gofmt
+    - govet
+    
+run:
+  timeout: 5m

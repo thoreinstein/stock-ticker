@@ -124,19 +124,26 @@ func createHandler(config *Config, client HTTPClient) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, fmt.Sprintf("Error encoding response: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
 // fetchStockData gets stock data from the Alpha Vantage API
 func fetchStockData(symbol string, nDays int, apiKey string, client HTTPClient) ([]TimeSeriesData, float64, error) {
 	url := fmt.Sprintf("https://www.alphavantage.co/query?apikey=%s&function=TIME_SERIES_DAILY&symbol=%s", apiKey, symbol)
-	
+
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = fmt.Errorf("error closing response body: %v", cerr)
+		}
+	}()
 
 	var avResp AlphaVantageResponse
 	if err := json.NewDecoder(resp.Body).Decode(&avResp); err != nil {
@@ -160,7 +167,7 @@ func processTimeSeries(timeSeries map[string]map[string]interface{}, nDays int) 
 	for date := range timeSeries {
 		dates = append(dates, date)
 	}
-	
+
 	limit := nDays
 	if len(dates) < nDays {
 		limit = len(dates)
@@ -169,7 +176,7 @@ func processTimeSeries(timeSeries map[string]map[string]interface{}, nDays int) 
 	for i := 0; i < limit && i < len(dates); i++ {
 		date := dates[i]
 		dayData := timeSeries[date]
-		
+
 		closePriceStr, ok := dayData["4. close"].(string)
 		if !ok {
 			continue

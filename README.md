@@ -42,9 +42,11 @@ docker run -p 8080:8080 \
 curl http://localhost:8080
 ```
 
-## Testing
+## Testing and Development
 
-This project follows Inside-Out TDD with comprehensive test coverage (currently 85.7%).
+This project follows Inside-Out TDD with comprehensive test coverage (currently 85.7%), along with robust linting and code quality checks.
+
+### Testing Commands
 
 ```bash
 # Run all tests
@@ -61,6 +63,19 @@ make test-coverage
 
 # Run tests and build
 make all
+```
+
+### Linting
+
+```bash
+# Install golangci-lint
+make install-tools
+
+# Add golangci-lint to your PATH
+export PATH=$HOME/go/bin:$PATH
+
+# Run linters
+make lint
 ```
 
 ### Testing Details
@@ -157,16 +172,22 @@ To test the Helm chart deployment locally:
 
 ```bash
 # Lint the chart
-helm lint ./helm/stock-ticker
+make helm-lint
 
-# Do a dry-run template rendering
-helm template stock-ticker ./helm/stock-ticker --set apiKey=your-api-key
+# Render templates for validation
+make helm-template
+
+# Package the chart
+make helm-package
+
+# Run all Helm validation in sequence
+make helm-test
 
 # Install with dry-run to check what would be applied
-helm install stock-ticker ./helm/stock-ticker --dry-run --set apiKey=your-api-key
+helm install stock-ticker ./charts/stock-ticker --dry-run --set apiKey=your-api-key
 
 # Install the chart
-helm install stock-ticker ./helm/stock-ticker --set apiKey=your-api-key
+helm install stock-ticker ./charts/stock-ticker --set apiKey=your-api-key
 
 # Test with port-forwarding
 kubectl port-forward svc/stock-ticker-stock-ticker 8080:80
