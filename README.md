@@ -63,13 +63,10 @@ make test-coverage
 make all
 ```
 
-### Testing Documentation
+### Testing Details
 
-Detailed testing information is available in these documents:
-
-- `README_TESTING.md` - Testing strategy and methodology
-- `TESTING_SUMMARY.md` - Current implementation details and coverage
-- `TEST_PLAN.md` - Test execution checklist and procedures
+This project follows Inside-Out TDD principles with unit tests in the `tests/unit` directory 
+and integration tests in the `tests/integration` directory.
 
 ## CI/CD and Publishing
 
@@ -95,43 +92,30 @@ docker push ghcr.io/username/stock-ticker:latest
 
 ### Option 1: Using Helm (Recommended)
 
-A Helm chart is available in the `helm/` directory for more flexible and configurable deployment.
+A Helm chart is available in the `charts/` directory for more flexible and configurable deployment.
 
 #### Documentation
 
-For detailed information about the Helm chart, see:
-- [HELM_CHART.md](./HELM_CHART.md) - Full documentation for the Helm chart
-- [Values Configuration](./helm/stock-ticker/values.yaml) - Configurable values with comments
+Detailed information about the Helm chart can be found in the chart's values.yaml file.
 
-#### Setup GitHub Container Registry Access
+#### GitHub Container Registry Access
 
-Since the container image is stored in a private GitHub Container Registry, you need to set up authentication:
-
-```bash
-# Set your GitHub credentials
-export GITHUB_USERNAME=your_github_username
-export GITHUB_TOKEN=your_github_token  # Token with 'read:packages' scope
-
-# Create the pull secret
-cd helm/
-./create-github-secret.sh --namespace=ping
-```
+The container image is stored in a public GitHub Container Registry, so no authentication is required to pull the image.
 
 #### Deploy the Application
 
 ```bash
 # Deploy with default settings (Ingress enabled)
-./deploy.sh --api-key=your_api_key --namespace=ping
+cd charts/
+helm install stock-ticker ./stock-ticker --namespace=stock-ticker --create-namespace --set apiKey=your_api_key
 
 # Deploy with LoadBalancer instead of Ingress
-./deploy.sh --api-key=your_api_key --namespace=ping --values=ping-values-lb.yaml
-
+cd charts/
+helm install stock-ticker ./stock-ticker --namespace=stock-ticker --create-namespace -f ping-values-lb.yaml --set apiKey=your_api_key
 
 # Deploy to production environment
-./deploy.sh --env=prod --namespace=stock-ticker-prod --api-key=your_api_key
-
-# For more options
-./deploy.sh --help
+cd charts/
+helm install stock-ticker ./stock-ticker --namespace=stock-ticker-prod --create-namespace --set apiKey=your_api_key
 ```
 
 #### Accessing the Service
@@ -173,7 +157,7 @@ kubectl port-forward svc/stock-ticker-stock-ticker 8080:80
 curl http://localhost:8080
 ```
 
-See the [HELM_CHART.md](./HELM_CHART.md) file for more details on configuring and using the Helm chart.
+The values.yaml file contains detailed information about all configurable options.
 
 ### Option 2: Using Pre-rendered Manifests
 
@@ -188,17 +172,6 @@ kubectl create namespace stock-ticker
 kubectl apply -f manifests/stock-ticker-rendered.yaml -n stock-ticker
 ```
 
-### Option 3: Using Raw Kubernetes Manifests
-
-Basic Kubernetes manifests are in the `k8s/` directory.
-
-```bash
-kubectl create namespace stock-ticker
-
-kubectl apply -f k8s/ -n stock-ticker
-
-kubectl get all -n stock-ticker
-```
 
 ### Testing the Deployment
 
@@ -206,11 +179,8 @@ kubectl get all -n stock-ticker
 # For Helm-based deployment
 kubectl port-forward -n stock-ticker svc/stock-ticker-stock-ticker 8080:80
 
-# For manifest-based deployment
-kubectl port-forward -n stock-ticker service/stock-ticker 8080:80
-
 # Test the API
 curl http://localhost:8080
 ```
 
-For production deployments, the service is accessible via the Ingress at `https://stock-ticker.thoreinstein.com`.
+For production deployments with Ingress enabled, the service would be accessible via the configured hostname.
