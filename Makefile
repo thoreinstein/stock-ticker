@@ -36,22 +36,22 @@ run:
 # Build Docker image
 docker-build:
 	@echo "Building Docker image..."
-	@docker build -t ping-sre .
+	@docker build -t stock-ticker .
 
 # Build multi-platform Docker image (AMD64 and ARM64)
 docker-build-multiplatform:
 	@echo "Building multi-platform Docker image..."
 	@docker buildx create --use --name multiplatform-builder >/dev/null 2>&1 || true
-	@docker buildx build --platform linux/amd64,linux/arm64 -t ping-sre:multiplatform -f Dockerfile.multiplatform . --load
+	@docker buildx build --platform linux/amd64,linux/arm64 -t stock-ticker:multiplatform -f Dockerfile.multiplatform . --load
 	@echo "Multi-platform images built for Linux AMD64 and ARM64"
 
 # Run Docker container
 docker-run:
 	@echo "Running Docker container..."
-	@docker stop ping-stock-ticker >/dev/null 2>&1 || true
-	@docker rm ping-stock-ticker >/dev/null 2>&1 || true
-	@docker run --name ping-stock-ticker -d -p 8080:8080 -e SYMBOL -e NDAYS -e APIKEY ping-sre
-	@echo "Container started. Check logs with: docker logs ping-stock-ticker"
+	@docker stop stock-ticker-container >/dev/null 2>&1 || true
+	@docker rm stock-ticker-container >/dev/null 2>&1 || true
+	@docker run --name stock-ticker-container -d -p 8080:8080 -e SYMBOL -e NDAYS -e APIKEY stock-ticker
+	@echo "Container started. Check logs with: docker logs stock-ticker-container"
 	@echo "Test the API with: curl http://localhost:8080"
 
 # Clean build artifacts
@@ -128,12 +128,12 @@ ci: lint test build docker-build cross-platform-test
 
 # Check Docker container logs
 docker-logs:
-	@docker logs ping-stock-ticker
+	@docker logs stock-ticker-container
 
 # Push Docker image to GitHub Container Registry
 docker-push:
 	@echo "Pushing Docker image to GitHub Container Registry..."
-	@docker tag ping-sre ghcr.io/$(shell git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/stock-ticker:latest
+	@docker tag stock-ticker ghcr.io/$(shell git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/stock-ticker:latest
 	@docker push ghcr.io/$(shell git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/stock-ticker:latest
 	@echo "Image pushed successfully"
 
