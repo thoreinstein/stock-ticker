@@ -13,6 +13,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -40,6 +41,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Ensure Package Repository exists
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Ensuring package repository exists..."
+          gh api --method PUT /user/packages/container/stock-ticker/visibility \
+            -f visibility="public" \
+            || echo "Repository may already exist or needs manual creation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
         id: meta
@@ -78,8 +89,8 @@ jobs:
 
       - name: Lint Helm chart
         run: |
-          helm lint ./helm/stock-ticker
+          helm lint ./charts/stock-ticker
 
       - name: Validate Helm chart templates
         run: |
-          helm template stock-ticker ./helm/stock-ticker --set apiKey=dummy-api-key --debug
+          helm template stock-ticker ./charts/stock-ticker --set apiKey=dummy-api-key --debug
