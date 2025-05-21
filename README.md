@@ -68,13 +68,29 @@ make all
 This project follows Inside-Out TDD principles with unit tests in the `tests/unit` directory 
 and integration tests in the `tests/integration` directory.
 
-## CI/CD and Publishing
+## CI/CD Pipeline
 
-This project uses GitHub Actions for CI/CD. On push to main or when a tag is created,
-the workflow will automatically:
-1. Run tests
-2. Build the Docker image
-3. Push to GitHub Container Registry (ghcr.io)
+This project uses GitHub Actions for CI/CD with separate workflows for different purposes:
+
+### Enhanced CI/CD Pipeline (`enhanced-pipeline.yaml`)
+
+This workflow runs on pushes to main and provides a comprehensive CI/CD pipeline:
+
+1. **Setup**: Configures the Go environment and caches dependencies
+2. **Lint**: Runs static code analysis and formatting checks
+3. **Test**: Executes unit and integration tests with coverage reporting
+4. **Build**: Builds and pushes the Docker image to GitHub Container Registry
+5. **Security Scan**: Scans the container image for vulnerabilities using Trivy
+6. **Helm Validation**: Validates and packages the Helm chart
+
+### Pull Request Checks (`pr-checks.yaml`)
+
+This workflow runs on pull requests to ensure code quality before merging:
+
+1. **Lint**: Validates code style and formatting
+2. **Test**: Runs unit and integration tests
+3. **Docker Validation**: Ensures the Docker build is successful
+4. **Helm Validation**: Validates Helm chart templates
 
 ### Manual Publishing
 
